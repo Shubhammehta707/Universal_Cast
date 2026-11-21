@@ -1,0 +1,337 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for UniversalCast senders and device administrators",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase user UID"
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "User display name"
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Avatar URL"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "Device": {
+      "title": "Device",
+      "description": "Registered hardware or browser receiver device",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique device ID"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "User UID who registered the device"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Friendly name of the device"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["tv", "browser", "monitor", "tablet", "mobile"],
+          "description": "Device classification"
+        },
+        "resolution": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Display resolution capability (e.g. 1920x1080)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["online", "offline"],
+          "description": "Current device status"
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Physical room or network location"
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Timestamp of last activity"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Registration timestamp"
+        }
+      },
+      "required": ["id", "ownerId", "name", "type"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Casting session metadata created and controlled by an authenticated sender",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique session ID"
+        },
+        "pin": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[0-9]{6}$",
+          "description": "Temporary 6-digit pairing PIN"
+        },
+        "senderId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of the casting sender"
+        },
+        "senderName": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Display name of sender"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Session title"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["screen", "video", "photo", "music"],
+          "description": "Active media stream type"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "paused", "ended"],
+          "description": "Session operational state"
+        },
+        "maxReceivers": {
+          "type": "number",
+          "description": "Hard limit on receivers (1 to 10)"
+        },
+        "receiverCount": {
+          "type": "number",
+          "description": "Current number of connected receivers"
+        },
+        "activeReceiverIds": {
+          "type": "array",
+          "description": "List of active receiver IDs capped at 10"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Session initiation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Last heartbeat or modification timestamp"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Session termination timestamp"
+        }
+      },
+      "required": ["id", "pin", "senderId", "title", "mediaType", "status", "maxReceivers"]
+    },
+    "SessionReceiver": {
+      "title": "SessionReceiver",
+      "description": "Connected receiver within a casting session",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Receiver client ID"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Parent session ID"
+        },
+        "senderId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner sender UID"
+        },
+        "deviceName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "Receiver label"
+        },
+        "deviceType": {
+          "type": "string",
+          "enum": ["tv", "browser", "monitor", "tablet", "mobile"],
+          "description": "Receiver device type"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["connected", "reconnecting", "disconnected", "kicked"],
+          "description": "Connection status"
+        },
+        "latencyMs": {
+          "type": "number",
+          "description": "Reported round-trip latency in milliseconds"
+        },
+        "fps": {
+          "type": "number",
+          "description": "Frame rate observed by receiver"
+        },
+        "resolution": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Active stream resolution"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Timestamp when receiver joined"
+        },
+        "lastPing": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Last receiver heartbeat"
+        }
+      },
+      "required": ["id", "sessionId", "senderId", "deviceName", "status"]
+    },
+    "SessionHistory": {
+      "title": "SessionHistory",
+      "description": "Archived session history entry for reporting and analytics",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "History record ID"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Original session ID"
+        },
+        "senderId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "UID of sender"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Session title"
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["screen", "video", "photo", "music"],
+          "description": "Cast media type"
+        },
+        "receiverCount": {
+          "type": "number",
+          "description": "Peak receivers connected"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Session duration in seconds"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "Start timestamp"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "End timestamp"
+        }
+      },
+      "required": ["id", "sessionId", "senderId", "title", "mediaType", "startedAt", "endedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "User profile documents (PII isolated to owner only)"
+    },
+    "/devices/{deviceId}": {
+      "schema": {
+        "$ref": "#/entities/Device"
+      },
+      "description": "Registered devices belonging to authenticated users"
+    },
+    "/sessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/Session"
+      },
+      "description": "Active and finished casting sessions owned by authenticated senders"
+    },
+    "/sessions/{sessionId}/receivers/{receiverId}": {
+      "schema": {
+        "$ref": "#/entities/SessionReceiver"
+      },
+      "description": "Receiver connections attached to a session"
+    },
+    "/sessionHistory/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/SessionHistory"
+      },
+      "description": "Immutable historical records of ended sessions"
+    }
+  }
+}

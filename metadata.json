@@ -1,0 +1,10 @@
+{
+  "name": "UniversalCast",
+  "description": "Universal multi-screen casting platform supporting screen mirroring, media streaming, PIN/QR pairing, and real-time multi-receiver broadcasts.",
+  "requestFramePermissions": [
+    "display-capture",
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

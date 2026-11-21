@@ -1,0 +1,205 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny all paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidTimestampStr(ts) {
+      return ts is string && ts.size() > 0 && ts.size() <= 64;
+    }
+
+    // User entity validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt']) &&
+             isValidId(data.uid) &&
+             data.email is string && data.email.size() > 0 && data.email.size() <= 150 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
+             (!('createdAt' in data) || isValidTimestampStr(data.createdAt)) &&
+             (!('updatedAt' in data) || isValidTimestampStr(data.updatedAt));
+    }
+
+    // Device entity validation
+    function isValidDevice(data) {
+      return data.keys().hasAll(['id', 'ownerId', 'name', 'type']) &&
+             data.keys().hasOnly(['id', 'ownerId', 'name', 'type', 'resolution', 'status', 'location', 'lastSeen', 'createdAt']) &&
+             isValidId(data.id) &&
+             isValidId(data.ownerId) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 60 &&
+             data.type in ['tv', 'browser', 'monitor', 'tablet', 'mobile'] &&
+             (!('resolution' in data) || (data.resolution is string && data.resolution.size() <= 30)) &&
+             (!('status' in data) || data.status in ['online', 'offline']) &&
+             (!('location' in data) || (data.location is string && data.location.size() <= 60)) &&
+             (!('lastSeen' in data) || isValidTimestampStr(data.lastSeen)) &&
+             (!('createdAt' in data) || isValidTimestampStr(data.createdAt));
+    }
+
+    // Session entity validation (Hard 10-receiver limit)
+    function isValidSession(data) {
+      return data.keys().hasAll(['id', 'pin', 'senderId', 'title', 'mediaType', 'status', 'maxReceivers']) &&
+             data.keys().hasOnly(['id', 'pin', 'senderId', 'senderName', 'title', 'mediaType', 'status', 'maxReceivers', 'receiverCount', 'activeReceiverIds', 'createdAt', 'updatedAt', 'endedAt']) &&
+             isValidId(data.id) &&
+             data.pin is string && data.pin.size() == 6 && data.pin.matches('^[0-9]{6}$') &&
+             isValidId(data.senderId) &&
+             (!('senderName' in data) || (data.senderName is string && data.senderName.size() <= 60)) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.mediaType in ['screen', 'video', 'photo', 'music'] &&
+             data.status in ['active', 'paused', 'ended'] &&
+             data.maxReceivers is number && data.maxReceivers >= 1 && data.maxReceivers <= 10 &&
+             (!('receiverCount' in data) || (data.receiverCount is number && data.receiverCount >= 0 && data.receiverCount <= data.maxReceivers)) &&
+             (!('activeReceiverIds' in data) || (
+               data.activeReceiverIds is list &&
+               data.activeReceiverIds.size() <= data.maxReceivers &&
+               data.activeReceiverIds.toSet().size() == data.activeReceiverIds.size()
+             )) &&
+             (!('receiverCount' in data) || !('activeReceiverIds' in data) || data.receiverCount == data.activeReceiverIds.size()) &&
+             (!('createdAt' in data) || isValidTimestampStr(data.createdAt)) &&
+             (!('updatedAt' in data) || isValidTimestampStr(data.updatedAt)) &&
+             (!('endedAt' in data) || isValidTimestampStr(data.endedAt));
+    }
+
+    // Session Receiver entity validation
+    function isValidSessionReceiver(data) {
+      return data.keys().hasAll(['id', 'sessionId', 'senderId', 'deviceName', 'status']) &&
+             data.keys().hasOnly(['id', 'sessionId', 'senderId', 'deviceName', 'deviceType', 'status', 'latencyMs', 'fps', 'resolution', 'joinedAt', 'lastPing']) &&
+             isValidId(data.id) &&
+             isValidId(data.sessionId) &&
+             isValidId(data.senderId) &&
+             data.deviceName is string && data.deviceName.size() > 0 && data.deviceName.size() <= 60 &&
+             (!('deviceType' in data) || data.deviceType in ['tv', 'browser', 'monitor', 'tablet', 'mobile']) &&
+             data.status in ['connected', 'reconnecting', 'disconnected', 'kicked'] &&
+             (!('latencyMs' in data) || (data.latencyMs is number && data.latencyMs >= 0 && data.latencyMs <= 60000)) &&
+             (!('fps' in data) || (data.fps is number && data.fps >= 0 && data.fps <= 240)) &&
+             (!('resolution' in data) || (data.resolution is string && data.resolution.size() <= 30)) &&
+             (!('joinedAt' in data) || isValidTimestampStr(data.joinedAt)) &&
+             (!('lastPing' in data) || isValidTimestampStr(data.lastPing));
+    }
+
+    // Session History entity validation
+    function isValidSessionHistory(data) {
+      return data.keys().hasAll(['id', 'sessionId', 'senderId', 'title', 'mediaType', 'startedAt', 'endedAt']) &&
+             data.keys().hasOnly(['id', 'sessionId', 'senderId', 'title', 'mediaType', 'receiverCount', 'durationSeconds', 'startedAt', 'endedAt']) &&
+             isValidId(data.id) &&
+             isValidId(data.sessionId) &&
+             isValidId(data.senderId) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.mediaType in ['screen', 'video', 'photo', 'music'] &&
+             (!('receiverCount' in data) || (data.receiverCount is number && data.receiverCount >= 0 && data.receiverCount <= 10)) &&
+             (!('durationSeconds' in data) || (data.durationSeconds is number && data.durationSeconds >= 0)) &&
+             isValidTimestampStr(data.startedAt) &&
+             isValidTimestampStr(data.endedAt);
+    }
+
+    // 1. Users collection (PII isolated to owner)
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isVerifiedUser() && isValidId(userId) && isValidUser(incoming()) && incoming().uid == userId;
+      allow update: if isOwner(userId) && isVerifiedUser() && isValidId(userId) && isValidUser(incoming()) &&
+                       incoming().uid == existing().uid &&
+                       (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt);
+      allow delete: if false;
+    }
+
+    // 2. Devices collection (Owner-only)
+    match /devices/{deviceId} {
+      allow get: if isSignedIn() && isValidId(deviceId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isVerifiedUser() && isValidId(deviceId) && isValidDevice(incoming()) &&
+                       incoming().ownerId == request.auth.uid && incoming().id == deviceId;
+      allow update: if isSignedIn() && isVerifiedUser() && isValidId(deviceId) && isValidDevice(incoming()) &&
+                       existing().ownerId == request.auth.uid &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().id == existing().id &&
+                       (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt);
+      allow delete: if isSignedIn() && isVerifiedUser() && isValidId(deviceId) && existing().ownerId == request.auth.uid;
+    }
+
+    // 3. Sessions collection (Zero public reads/lists; owner-controlled)
+    match /sessions/{sessionId} {
+      allow get: if isSignedIn() && isValidId(sessionId) && existing().senderId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow create: if isSignedIn() && isVerifiedUser() && isValidId(sessionId) && isValidSession(incoming()) &&
+                       incoming().senderId == request.auth.uid &&
+                       incoming().id == sessionId &&
+                       incoming().status == 'active';
+      allow update: if isSignedIn() && isVerifiedUser() && isValidId(sessionId) && isValidSession(incoming()) &&
+                       existing().senderId == request.auth.uid &&
+                       existing().status != 'ended' &&
+                       incoming().senderId == existing().senderId &&
+                       incoming().id == existing().id &&
+                       incoming().pin == existing().pin &&
+                       incoming().maxReceivers == existing().maxReceivers &&
+                       (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) && (
+                         // Action: Sync connected receiver telemetry
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['receiverCount', 'activeReceiverIds', 'updatedAt'])) ||
+                         // Action: Pause/Resume/Retitle or End session
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'title', 'mediaType', 'updatedAt', 'endedAt']))
+                       );
+      allow delete: if isSignedIn() && isVerifiedUser() && isValidId(sessionId) && existing().senderId == request.auth.uid;
+
+      // 4. Session Receivers subcollection (Master Gate: Session Owner)
+      match /receivers/{receiverId} {
+        allow get: if isSignedIn() && isValidId(sessionId) && isValidId(receiverId) && existing().senderId == request.auth.uid;
+        allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+        allow create: if isSignedIn() && isVerifiedUser() && isValidId(sessionId) && isValidId(receiverId) &&
+                         isValidSessionReceiver(incoming()) &&
+                         incoming().sessionId == sessionId &&
+                         incoming().id == receiverId &&
+                         incoming().senderId == request.auth.uid &&
+                         exists(/databases/$(database)/documents/sessions/$(sessionId)) &&
+                         get(/databases/$(database)/documents/sessions/$(sessionId)).data.senderId == request.auth.uid;
+        allow update: if isSignedIn() && isVerifiedUser() && isValidId(sessionId) && isValidId(receiverId) &&
+                         isValidSessionReceiver(incoming()) &&
+                         existing().senderId == request.auth.uid &&
+                         incoming().senderId == existing().senderId &&
+                         incoming().sessionId == existing().sessionId &&
+                         incoming().id == existing().id &&
+                         get(/databases/$(database)/documents/sessions/$(sessionId)).data.senderId == request.auth.uid &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['deviceName', 'deviceType', 'status', 'latencyMs', 'fps', 'resolution', 'lastPing']);
+        allow delete: if isSignedIn() && isVerifiedUser() && isValidId(sessionId) && isValidId(receiverId) &&
+                         existing().senderId == request.auth.uid &&
+                         get(/databases/$(database)/documents/sessions/$(sessionId)).data.senderId == request.auth.uid;
+      }
+    }
+
+    // 5. Session History collection (Immutable owner-only archives)
+    match /sessionHistory/{historyId} {
+      allow get: if isSignedIn() && isValidId(historyId) && existing().senderId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow create: if isSignedIn() && isVerifiedUser() && isValidId(historyId) && isValidSessionHistory(incoming()) &&
+                       incoming().senderId == request.auth.uid && incoming().id == historyId;
+      allow update: if false;
+      allow delete: if isSignedIn() && isVerifiedUser() && isValidId(historyId) && existing().senderId == request.auth.uid;
+    }
+  }
+}
